@@ -486,8 +486,8 @@ func TestUpdateProduct(t *testing.T) {
 			name:      "Valid update",
 			productID: "1",
 			requestBody: models.UpdateProductRequest{
-				Name:  stringPtr("Updated Product"),
-				Price: float64Ptr(150.0),
+				Name:  byref("Updated Product"),
+				Price: byref(150.0),
 			},
 			expectedStatus: http.StatusOK,
 			expectedName:   "Updated Product",
@@ -496,7 +496,7 @@ func TestUpdateProduct(t *testing.T) {
 			name:      "Partial update",
 			productID: "1",
 			requestBody: models.UpdateProductRequest{
-				InStock: boolPtr(false),
+				InStock: byref(false),
 			},
 			expectedStatus: http.StatusOK,
 		},
@@ -504,7 +504,7 @@ func TestUpdateProduct(t *testing.T) {
 			name:      "Non-existent product",
 			productID: "999",
 			requestBody: models.UpdateProductRequest{
-				Name: stringPtr("Should not work"),
+				Name: byref("Should not work"),
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -512,7 +512,7 @@ func TestUpdateProduct(t *testing.T) {
 			name:      "Invalid product ID",
 			productID: "9999999999999999999", // exceeds int range
 			requestBody: models.UpdateProductRequest{
-				Name: stringPtr("Should not work"),
+				Name: byref("Should not work"),
 			},
 			expectedStatus: http.StatusBadRequest,
 		},
@@ -526,14 +526,14 @@ func TestUpdateProduct(t *testing.T) {
 			name:      "Invalid price",
 			productID: "1",
 			requestBody: models.UpdateProductRequest{
-				Price: float64Ptr(-50.0),
+				Price: byref(-50.0),
 			},
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "Database error",
 			productID:      "1",
-			requestBody:    models.UpdateProductRequest{Name: stringPtr("Should not work")},
+			requestBody:    models.UpdateProductRequest{Name: byref("Should not work")},
 			dbShouldFail:   true,
 			expectedStatus: http.StatusInternalServerError,
 		},
@@ -727,15 +727,7 @@ func TestCORSMiddleware(t *testing.T) {
 	}
 }
 
-// Helper functions for creating pointers
-func stringPtr(s string) *string {
-	return &s
-}
-
-func float64Ptr(f float64) *float64 {
-	return &f
-}
-
-func boolPtr(b bool) *bool {
-	return &b
+// Helper function for creating pointers to literals
+func byref[T any](v T) *T {
+	return &v
 }
