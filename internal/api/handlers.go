@@ -14,6 +14,13 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	cInvalidJSON      = "Invalid JSON"
+	cInvalidProductId = "Invalid product ID"
+	cProductNotFound  = "Product not found"
+	cValidationFailed = "Validation failed"
+)
+
 // Handler handles HTTP requests for the products API
 type Handler struct {
 	db        db.Database
@@ -33,14 +40,18 @@ func (h *Handler) SetupRoutes() *mux.Router {
 	router := mux.NewRouter()
 
 	// API routes
+	const productsRoute = "/products"
+	const productByIdRoute = "/products/{id:[0-9]+}"
+
 	api := router.PathPrefix("/api/v1").Subrouter()
-	api.HandleFunc("/products", h.GetProducts).Methods("GET")
-	api.HandleFunc("/products", h.CreateProduct).Methods("POST")
-	api.HandleFunc("/products", nil).Methods("OPTIONS") // handled by CORS middleware
-	api.HandleFunc("/products/{id:[0-9]+}", h.GetProduct).Methods("GET")
-	api.HandleFunc("/products/{id:[0-9]+}", h.UpdateProduct).Methods("PUT")
-	api.HandleFunc("/products/{id:[0-9]+}", h.DeleteProduct).Methods("DELETE")
-	api.HandleFunc("/products/{id:[0-9]+}", nil).Methods("OPTIONS") // handled by CORS middleware
+	api.HandleFunc(productsRoute, h.GetProducts).Methods("GET")
+	api.HandleFunc(productsRoute, h.CreateProduct).Methods("POST")
+	api.HandleFunc(productsRoute, nil).Methods("OPTIONS") // handled by CORS middleware
+
+	api.HandleFunc(productByIdRoute, h.GetProduct).Methods("GET")
+	api.HandleFunc(productByIdRoute, h.UpdateProduct).Methods("PUT")
+	api.HandleFunc(productByIdRoute, h.DeleteProduct).Methods("DELETE")
+	api.HandleFunc(productByIdRoute, nil).Methods("OPTIONS") // handled by CORS middleware
 
 	// Health check endpoint
 	router.HandleFunc("/health", h.HealthCheck).Methods("GET")
@@ -91,14 +102,14 @@ func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		h.writeErrorResponse(w, http.StatusBadRequest, "Invalid product ID", "")
+		h.writeErrorResponse(w, http.StatusBadRequest, cInvalidProductId, "")
 		return
 	}
 
 	product, err := h.db.GetProductByID(id)
 	switch {
 	case errors.Is(err, db.ErrNotFound):
-		h.writeErrorResponse(w, http.StatusNotFound, "Product not found", "")
+		h.writeErrorResponse(w, http.StatusNotFound, cProductNotFound, "")
 		return
 
 	case err != nil:
@@ -113,13 +124,13 @@ func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var req models.CreateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeErrorResponse(w, http.StatusBadRequest, "Invalid JSON", err.Error())
+		h.writeErrorResponse(w, http.StatusBadRequest, cInvalidJSON, err.Error())
 		return
 	}
 
 	// Validate request
 	if err := h.validator.Struct(&req); err != nil {
-		h.writeErrorResponse(w, http.StatusBadRequest, "Validation failed", err.Error())
+		h.writeErrorResponse(w, http.StatusBadRequest, cValidationFailed, err.Error())
 		return
 	}
 
@@ -138,19 +149,19 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		h.writeErrorResponse(w, http.StatusBadRequest, "Invalid product ID", "")
+		h.writeErrorResponse(w, http.StatusBadRequest, cInvalidProductId, "")
 		return
 	}
 
 	var req models.UpdateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeErrorResponse(w, http.StatusBadRequest, "Invalid JSON", err.Error())
+		h.writeErrorResponse(w, http.StatusBadRequest, cInvalidJSON, err.Error())
 		return
 	}
 
 	// Validate request
 	if err := h.validator.Struct(&req); err != nil {
-		h.writeErrorResponse(w, http.StatusBadRequest, "Validation failed", err.Error())
+		h.writeErrorResponse(w, http.StatusBadRequest, cValidationFailed, err.Error())
 		return
 	}
 
@@ -158,7 +169,7 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	product, err := h.db.UpdateProduct(id, req)
 	switch {
 	case errors.Is(err, db.ErrNotFound):
-		h.writeErrorResponse(w, http.StatusNotFound, "Product not found", "")
+		h.writeErrorResponse(w, http.StatusNotFound, cProductNotFound, "")
 		return
 
 	case err != nil:
@@ -174,14 +185,14 @@ func (h *Handler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		h.writeErrorResponse(w, http.StatusBadRequest, "Invalid product ID", "")
+		h.writeErrorResponse(w, http.StatusBadRequest, cInvalidProductId, "")
 		return
 	}
 
 	err = h.db.DeleteProduct(id)
 	switch {
 	case errors.Is(err, db.ErrNotFound):
-		h.writeErrorResponse(w, http.StatusNotFound, "Product not found", "")
+		h.writeErrorResponse(w, http.StatusNotFound, cProductNotFound, "")
 		return
 
 	case err != nil:
