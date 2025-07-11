@@ -169,7 +169,9 @@ func TestGetProducts(t *testing.T) {
 	}
 
 	for _, product := range testProducts {
-		mockDB.CreateProduct(product)
+		if _, err := mockDB.CreateProduct(product); err != nil {
+			t.Fatalf("Failed to create test product: %v", err)
+		}
 	}
 
 	tests := []struct {
@@ -468,7 +470,9 @@ func TestUpdateProduct(t *testing.T) {
 		Category:    "Original",
 		InStock:     true,
 	}
-	mockDB.CreateProduct(createReq)
+	if _, err := mockDB.CreateProduct(createReq); err != nil {
+		t.Fatalf("Failed to create test product: %v", err)
+	}
 
 	tests := []struct {
 		name           string
@@ -591,7 +595,9 @@ func TestDeleteProduct(t *testing.T) {
 		Category:    "Test",
 		InStock:     true,
 	}
-	mockDB.CreateProduct(createReq)
+	if _, err := mockDB.CreateProduct(createReq); err != nil {
+		t.Fatalf("Failed to create test product: %v", err)
+	}
 
 	tests := []struct {
 		name           string
