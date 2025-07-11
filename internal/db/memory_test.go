@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"testing"
 
 	"products-api/internal/models"
@@ -97,8 +98,8 @@ func TestGetProductByID(t *testing.T) {
 		t.Error("Expected error for non-existent product")
 	}
 
-	if err.Error() != "product not found" {
-		t.Errorf("Expected 'product not found' error, got %s", err.Error())
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("Expected 'not found' error, got %s", err.Error())
 	}
 
 	// Test that returned product is a copy (modification doesn't affect original)
@@ -225,8 +226,8 @@ func TestUpdateProduct(t *testing.T) {
 		t.Error("Expected error when updating non-existent product")
 	}
 
-	if err.Error() != "product not found" {
-		t.Errorf("Expected 'product not found' error, got %s", err.Error())
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("Expected 'not found' error, got %s", err.Error())
 	}
 
 	// Test partial update
@@ -274,8 +275,8 @@ func TestDeleteProduct(t *testing.T) {
 		t.Error("Expected error when deleting non-existent product")
 	}
 
-	if err.Error() != "product not found" {
-		t.Errorf("Expected 'product not found' error, got %s", err.Error())
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("Expected 'not found' error, got %s", err.Error())
 	}
 
 	// Test deleting same product twice

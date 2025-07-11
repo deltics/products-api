@@ -1,7 +1,6 @@
 package db
 
 import (
-	"errors"
 	"sort"
 	"sync"
 	"time"
@@ -122,7 +121,7 @@ func (db *InMemoryDB) GetProductByID(id int) (*models.Product, error) {
 
 	product, exists := db.products[id]
 	if !exists {
-		return nil, errors.New("product not found")
+		return nil, ErrNotFound
 	}
 
 	// Return a copy to prevent external modifications
@@ -162,7 +161,7 @@ func (db *InMemoryDB) UpdateProduct(id int, req models.UpdateProductRequest) (*m
 
 	product, exists := db.products[id]
 	if !exists {
-		return nil, errors.New("product not found")
+		return nil, ErrNotFound
 	}
 
 	// Update fields if provided
@@ -196,7 +195,7 @@ func (db *InMemoryDB) DeleteProduct(id int) error {
 
 	_, exists := db.products[id]
 	if !exists {
-		return errors.New("product not found")
+		return ErrNotFound
 	}
 
 	delete(db.products, id)

@@ -60,7 +60,7 @@ func (m *mockDB) GetProductByID(id int) (*models.Product, error) {
 
 	product, exists := m.products[id]
 	if !exists {
-		return nil, fmt.Errorf("product not found")
+		return nil, db.ErrNotFound
 	}
 
 	productCopy := *product
@@ -95,7 +95,7 @@ func (m *mockDB) UpdateProduct(id int, req models.UpdateProductRequest) (*models
 
 	product, exists := m.products[id]
 	if !exists {
-		return nil, fmt.Errorf("product not found")
+		return nil, db.ErrNotFound
 	}
 
 	if req.Name != nil {
@@ -125,7 +125,7 @@ func (m *mockDB) DeleteProduct(id int) error {
 
 	_, exists := m.products[id]
 	if !exists {
-		return fmt.Errorf("product not found")
+		return db.ErrNotFound
 	}
 
 	delete(m.products, id)
@@ -279,6 +279,7 @@ func TestGetProduct(t *testing.T) {
 	tests := []struct {
 		name           string
 		productID      string
+		dbShouldFail   bool
 		expectedStatus int
 		expectedName   string
 	}{
@@ -298,10 +299,18 @@ func TestGetProduct(t *testing.T) {
 			productID:      "999",
 			expectedStatus: http.StatusNotFound,
 		},
+		{
+			name:           "Database error",
+			productID:      "1",
+			dbShouldFail:   true,
+			expectedStatus: http.StatusInternalServerError,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mockDB.shouldFail = tt.dbShouldFail
+
 			req := httptest.NewRequest("GET", "/api/v1/products/"+tt.productID, nil)
 			rr := httptest.NewRecorder()
 
@@ -465,6 +474,7 @@ func TestUpdateProduct(t *testing.T) {
 		name           string
 		productID      string
 		requestBody    interface{}
+		dbShouldFail   bool
 		expectedStatus int
 		expectedName   string
 	}{
@@ -516,6 +526,13 @@ func TestUpdateProduct(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 		},
+		{
+			name:           "Database error",
+			productID:      "1",
+			requestBody:    models.UpdateProductRequest{Name: stringPtr("Should not work")},
+			dbShouldFail:   true,
+			expectedStatus: http.StatusInternalServerError,
+		},
 	}
 
 	for _, tt := range tests {
@@ -531,6 +548,8 @@ func TestUpdateProduct(t *testing.T) {
 					t.Fatalf("Failed to marshal request body: %v", err)
 				}
 			}
+
+			mockDB.shouldFail = tt.dbShouldFail
 
 			req := httptest.NewRequest("PUT", "/api/v1/products/"+tt.productID, bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -577,6 +596,7 @@ func TestDeleteProduct(t *testing.T) {
 	tests := []struct {
 		name           string
 		productID      string
+		dbShouldFail   bool
 		expectedStatus int
 	}{
 		{
@@ -594,10 +614,18 @@ func TestDeleteProduct(t *testing.T) {
 			productID:      "9999999999999999999", // exceeds int range
 			expectedStatus: http.StatusBadRequest,
 		},
+		{
+			name:           "Database error",
+			productID:      "1",
+			dbShouldFail:   true,
+			expectedStatus: http.StatusInternalServerError,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mockDB.shouldFail = tt.dbShouldFail
+
 			req := httptest.NewRequest("DELETE", "/api/v1/products/"+tt.productID, nil)
 			rr := httptest.NewRecorder()
 

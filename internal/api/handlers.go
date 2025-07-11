@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -95,8 +96,13 @@ func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	product, err := h.db.GetProductByID(id)
-	if err != nil {
+	switch {
+	case errors.Is(err, db.ErrNotFound):
 		h.writeErrorResponse(w, http.StatusNotFound, "Product not found", "")
+		return
+
+	case err != nil:
+		h.writeErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve product", err.Error())
 		return
 	}
 
@@ -150,12 +156,13 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 
 	// Update product
 	product, err := h.db.UpdateProduct(id, req)
-	if err != nil {
-		if err.Error() == "product not found" {
-			h.writeErrorResponse(w, http.StatusNotFound, "Product not found", "")
-		} else {
-			h.writeErrorResponse(w, http.StatusInternalServerError, "Failed to update product", err.Error())
-		}
+	switch {
+	case errors.Is(err, db.ErrNotFound):
+		h.writeErrorResponse(w, http.StatusNotFound, "Product not found", "")
+		return
+
+	case err != nil:
+		h.writeErrorResponse(w, http.StatusInternalServerError, "Failed to update product", err.Error())
 		return
 	}
 
@@ -172,12 +179,13 @@ func (h *Handler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = h.db.DeleteProduct(id)
-	if err != nil {
-		if err.Error() == "product not found" {
-			h.writeErrorResponse(w, http.StatusNotFound, "Product not found", "")
-		} else {
-			h.writeErrorResponse(w, http.StatusInternalServerError, "Failed to delete product", err.Error())
-		}
+	switch {
+	case errors.Is(err, db.ErrNotFound):
+		h.writeErrorResponse(w, http.StatusNotFound, "Product not found", "")
+		return
+
+	case err != nil:
+		h.writeErrorResponse(w, http.StatusInternalServerError, "Failed to delete product", err.Error())
 		return
 	}
 
