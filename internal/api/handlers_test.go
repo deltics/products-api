@@ -290,8 +290,8 @@ func TestGetProduct(t *testing.T) {
 		},
 		{
 			name:           "Invalid product ID",
-			productID:      "abc",
-			expectedStatus: http.StatusNotFound,
+			productID:      "9999999999999999999", // exceeds int range
+			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "Non-existent product",
@@ -496,11 +496,11 @@ func TestUpdateProduct(t *testing.T) {
 		},
 		{
 			name:      "Invalid product ID",
-			productID: "abc",
+			productID: "9999999999999999999", // exceeds int range
 			requestBody: models.UpdateProductRequest{
 				Name: stringPtr("Should not work"),
 			},
-			expectedStatus: http.StatusNotFound,
+			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "Invalid JSON",
@@ -591,8 +591,8 @@ func TestDeleteProduct(t *testing.T) {
 		},
 		{
 			name:           "Invalid product ID",
-			productID:      "abc",
-			expectedStatus: http.StatusNotFound,
+			productID:      "9999999999999999999", // exceeds int range
+			expectedStatus: http.StatusBadRequest,
 		},
 	}
 
