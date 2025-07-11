@@ -36,11 +36,11 @@ func (h *Handler) SetupRoutes() *mux.Router {
 	api := router.PathPrefix("/api/v1").Subrouter()
 	api.HandleFunc("/products", h.GetProducts).Methods("GET")
 	api.HandleFunc("/products", h.CreateProduct).Methods("POST")
-	api.HandleFunc("/products", h.OptionsHandler).Methods("OPTIONS")
+	api.HandleFunc("/products", nil).Methods("OPTIONS") // handled by CORS middleware
 	api.HandleFunc("/products/{id:[0-9]+}", h.GetProduct).Methods("GET")
 	api.HandleFunc("/products/{id:[0-9]+}", h.UpdateProduct).Methods("PUT")
 	api.HandleFunc("/products/{id:[0-9]+}", h.DeleteProduct).Methods("DELETE")
-	api.HandleFunc("/products/{id:[0-9]+}", h.OptionsHandler).Methods("OPTIONS")
+	api.HandleFunc("/products/{id:[0-9]+}", nil).Methods("OPTIONS") // handled by CORS middleware
 
 	// Health check endpoint
 	router.HandleFunc("/health", h.HealthCheck).Methods("GET")
@@ -199,12 +199,6 @@ func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 		"service": "products-api",
 	}
 	h.writeJSONResponse(w, http.StatusOK, response)
-}
-
-// OptionsHandler handles OPTIONS requests for CORS preflight
-func (h *Handler) OptionsHandler(w http.ResponseWriter, r *http.Request) {
-	// CORS headers are already set by the middleware
-	w.WriteHeader(http.StatusOK)
 }
 
 // Helper methods

@@ -1,7 +1,15 @@
+# Notes on Modifications to the Copilot Implementation
 
-# API Handlers
+## General
 
-## ID Routes
+### Linting
+
+Code was linted using `golangci-lint` (v2) with default configuration.  All lint issues were
+addressed as required.
+
+## API Handlers
+
+### ID Routes
 
 The implementation uses Gorilla Mux with regex patterns to handle API requests. This provides
 routes that reject invalid IDs without providing helpful responses or error messages.  i.e.
@@ -16,7 +24,7 @@ This may be a valid design choice, but is not especially helpful for API consume
 approach might be to relax the route matching and implement explicit parameter validation
 within the handler functions to allow for more informative error responses.
 
-## Not Found vs Database Errors
+### Not Found vs Database Errors
 
 In the initial implementation, the error handling for "not found" and other database errors was
 conflated, making it difficult to distinguish between a product not being found and other
@@ -25,3 +33,18 @@ database-related issues.
 A ErrProductNotFound sentinel error was introduced in the database layer to distinguish
 between these two scenarios, enabling API handlers to differentiate between errors and
 provide appropriate and more informative responses.
+
+### Test Data Creation
+
+Error checks were added to the test data creation steps to ensure that the test setup is robust.
+
+### CORS OPTIONS Route
+
+An OPTIONS handler method was added to the API handler but this method would never be called
+since the OPTIONS request was handled by the CORS middleware, resulting in unreachable and
+untestable code that static analysis was unable to identify.
+
+The unnecessary OPTIONS handler method was removed, and the Gorilla Mux router configuration
+updated with a nil handler for the OPTIONS routes, documenting the use of CORS middleware
+for the handling of these routes. This simplifies the code and enables 100% test coverage of
+the api package.
