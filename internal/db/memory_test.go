@@ -336,7 +336,7 @@ func TestConcurrentAccess(t *testing.T) {
 				Price: float64Ptr(float64(i + 100)),
 			}
 			_, err := db.UpdateProduct(2, updateReq)
-			if err != nil && err.Error() != "product not found" {
+			if err != nil && !errors.Is(err, ErrNotFound) {
 				t.Errorf("Concurrent update failed: %v", err)
 			}
 		}
@@ -347,7 +347,9 @@ func TestConcurrentAccess(t *testing.T) {
 	go func() {
 		for i := 0; i < 25; i++ {
 			// Try to delete (might fail if already deleted)
-			db.DeleteProduct(3)
+			if err := db.DeleteProduct(3); err != nil && !errors.Is(err, ErrNotFound) {
+				t.Errorf("Concurrent delete failed: %v", err)
+			}
 
 			// Create new product
 			req := models.CreateProductRequest{
@@ -357,7 +359,9 @@ func TestConcurrentAccess(t *testing.T) {
 				Category:    "Temp",
 				InStock:     true,
 			}
-			db.CreateProduct(req)
+			if _, err := db.CreateProduct(req); err != nil {
+				t.Errorf("Concurrent create failed: %v", err)
+			}
 		}
 		done <- true
 	}()
