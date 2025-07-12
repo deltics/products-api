@@ -10,12 +10,14 @@ import (
 
 // Database interface defines the contract for our database operations
 type Database interface {
-	GetProducts(page, pageSize int) ([]models.Product, int, error)
+	GetProducts(page, pageSize int, filters ...ProductFilter) ([]models.Product, int, error)
 	GetProductByID(id int) (*models.Product, error)
 	CreateProduct(req models.CreateProductRequest) (*models.Product, error)
 	UpdateProduct(id int, req models.UpdateProductRequest) (*models.Product, error)
 	DeleteProduct(id int) error
 }
+
+type ProductFilter func(product *models.Product) bool
 
 // InMemoryDB implements the Database interface using in-memory storage
 type InMemoryDB struct {
@@ -78,7 +80,7 @@ func NewInMemoryDB() *InMemoryDB {
 }
 
 // GetProducts returns a paginated list of products
-func (db *InMemoryDB) GetProducts(page, pageSize int) ([]models.Product, int, error) {
+func (db *InMemoryDB) GetProducts(page, pageSize int, filters ...ProductFilter) ([]models.Product, int, error) {
 	db.mutex.RLock()
 	defer db.mutex.RUnlock()
 
@@ -89,9 +91,18 @@ func (db *InMemoryDB) GetProducts(page, pageSize int) ([]models.Product, int, er
 		pageSize = 10
 	}
 
-	// Convert map to slice and sort by ID
+	// Convert map to slice and sort by ID, removing products that don't
+	// match filters
 	products := make([]models.Product, 0, len(db.products))
+productLoop:
 	for _, product := range db.products {
+		if len(filters) > 0 {
+			for _, filter := range filters {
+				if !filter(product) {
+					continue productLoop
+				}
+			}
+		}
 		products = append(products, *product)
 	}
 

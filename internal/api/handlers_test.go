@@ -29,13 +29,22 @@ func newMockDB() *mockDB {
 	}
 }
 
-func (m *mockDB) GetProducts(page, pageSize int) ([]models.Product, int, error) {
+func (m *mockDB) GetProducts(page, pageSize int, filters ...db.ProductFilter) ([]models.Product, int, error) {
 	if m.shouldFail {
 		return nil, 0, fmt.Errorf("mock database error")
 	}
 
 	products := make([]models.Product, 0, len(m.products))
+productLoop:
 	for _, p := range m.products {
+		if len(filters) > 0 {
+			for _, filter := range filters {
+				if !filter(p) {
+					continue productLoop
+				}
+			}
+		}
+
 		products = append(products, *p)
 	}
 

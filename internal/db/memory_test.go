@@ -129,6 +129,24 @@ func TestGetProducts(t *testing.T) {
 		t.Errorf("Expected 5 products, got %d", len(products))
 	}
 
+	// Test getting products that are in stock
+	inStockFilter := func(product *models.Product) bool {
+		return product.InStock
+	}
+
+	products, total, err = db.GetProducts(1, 10, inStockFilter)
+	if err != nil {
+		t.Fatalf("GetProducts() with in-stock filter failed: %v", err)
+	}
+
+	if total != 4 {
+		t.Errorf("Expected total 4 with in-stock filter, got %d", total)
+	}
+
+	if len(products) != 4 {
+		t.Errorf("Expected 4 products, got %d", len(products))
+	}
+
 	// Test pagination
 	products, total, err = db.GetProducts(1, 2)
 	if err != nil {
