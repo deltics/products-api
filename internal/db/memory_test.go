@@ -144,7 +144,7 @@ func TestGetProducts(t *testing.T) {
 	}
 
 	// Test second page
-	products, total, err = db.GetProducts(2, 2)
+	products, _, err = db.GetProducts(2, 2)
 	if err != nil {
 		t.Fatalf("GetProducts() second page failed: %v", err)
 	}
