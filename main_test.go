@@ -9,13 +9,15 @@ import (
 	"time"
 
 	"products-api/internal/api"
+	"products-api/internal/api/ratelimiter"
 	"products-api/internal/db"
 )
 
 func TestMainIntegration(t *testing.T) {
 	// Test that we can create a complete application setup
 	database := db.NewInMemoryDB()
-	handler := api.NewHandler(database)
+	limiter := ratelimiter.NewNoopLimiter() // Use NoopLimiter for integration tests
+	handler := api.NewHandler(database, limiter)
 	mux := handler.SetupRoutes()
 
 	// Test health endpoint
@@ -90,7 +92,8 @@ func TestEnvironmentVariables(t *testing.T) {
 func TestServerCanStart(t *testing.T) {
 	// Test that the server can be initialized without errors
 	database := db.NewInMemoryDB()
-	handler := api.NewHandler(database)
+	limiter := ratelimiter.NewNoopLimiter()
+	handler := api.NewHandler(database, limiter)
 	mux := handler.SetupRoutes()
 
 	// Create a test server
@@ -112,7 +115,8 @@ func TestServerCanStart(t *testing.T) {
 func TestConcurrentRequests(t *testing.T) {
 	// Test that the application can handle concurrent requests
 	database := db.NewInMemoryDB()
-	handler := api.NewHandler(database)
+	limiter := ratelimiter.NewNoopLimiter()
+	handler := api.NewHandler(database, limiter)
 	mux := handler.SetupRoutes()
 
 	server := httptest.NewServer(mux)

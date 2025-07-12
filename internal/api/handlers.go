@@ -22,17 +22,23 @@ const (
 	cValidationFailed = "Validation failed"
 )
 
+type RateLimiter interface {
+	Allow(rq *http.Request) bool
+}
+
 // Handler handles HTTP requests for the products API
 type Handler struct {
-	db        db.Database
-	validator *validator.Validate
+	db          db.Database
+	rateLimiter RateLimiter
+	validator   *validator.Validate
 }
 
 // NewHandler creates a new API handler
-func NewHandler(database db.Database) *Handler {
+func NewHandler(database db.Database, rateLimiter RateLimiter) *Handler {
 	return &Handler{
-		db:        database,
-		validator: validator.New(),
+		db:          database,
+		rateLimiter: rateLimiter,
+		validator:   validator.New(),
 	}
 }
 
@@ -58,6 +64,9 @@ func (h *Handler) SetupRoutes() *mux.Router {
 	router.HandleFunc("/health", h.HealthCheck).Methods("GET")
 
 	// Add middleware
+	if h.rateLimiter != nil {
+		router.Use(h.ratelimiterMiddleware)
+	}
 	router.Use(h.loggingMiddleware)
 	router.Use(h.corsMiddleware)
 
@@ -255,6 +264,17 @@ func (h *Handler) corsMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (h *Handler) ratelimiterMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !h.rateLimiter.Allow(r) {
+			fmt.Printf("%s %s %s: rate limit exceeded\n", r.Method, r.RequestURI, r.RemoteAddr)
+			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+			return
+		}
 		next.ServeHTTP(w, r)
 	})
 }

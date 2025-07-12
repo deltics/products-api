@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -15,11 +16,35 @@ import (
 )
 
 func main() {
+	var err error
+
+	// Create a context for the application
+	ctx := context.Background()
+
 	// Initialize the in-memory database
 	database := db.NewInMemoryDB()
 
+	// Initialize a rate limiter with a cancellable context
+	ctx, cancelRateLimiter := context.WithCancel(ctx)
+	defer cancelRateLimiter()
+
+	var rateLimit = 100
+	if s := os.Getenv("RATE_LIMIT"); s != "" {
+		var err error
+		rateLimit, err = strconv.Atoi(s)
+		if err != nil {
+			log.Fatalf("Invalid RATE_LIMIT: %v", err)
+		}
+	}
+	log.Println("RATE_LIMIT:", rateLimit, "requests/sec")
+
+	rateLimiter, err := api.NewRateLimiter(ctx, rateLimit)
+	if err != nil {
+		log.Fatalf("Failed to create rate limiter: %v", err)
+	}
+
 	// Create the API handler with the database
-	handler := api.NewHandler(database)
+	handler := api.NewHandler(database, rateLimiter)
 
 	// Set up routes
 	mux := handler.SetupRoutes()
@@ -41,10 +66,12 @@ func main() {
 	}
 	go func() {
 		log.Printf("Server starting on port %s", port)
+
 		err := srv.ListenAndServe()
 		switch {
 		case errors.Is(err, http.ErrServerClosed):
 			log.Println("Server exited gracefully")
+
 		case err != nil:
 			log.Fatalf("ListenAndServe: %v", err)
 		}
@@ -52,9 +79,8 @@ func main() {
 
 	<-stop // wait for stop signal
 
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
+	ctx, cancelShutdown := context.WithTimeout(ctx, 15*time.Second)
+	defer cancelShutdown()
 
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("Server Shutdown Failed: %+v", err)

@@ -48,3 +48,24 @@ The unnecessary OPTIONS handler method was removed, and the Gorilla Mux router c
 updated with a nil handler for the OPTIONS routes, documenting the use of CORS middleware
 for the handling of these routes. This simplifies the code and enables 100% test coverage of
 the api package.
+
+## Rate Limiter
+
+A simple rate limiter was implemented to limit requests from clients identified by remote
+IP address to a specified number of requests per interval.
+
+### Rate Limiter Testing
+
+To simplify api tests, a NOOP limiter is provided.
+
+I have used my own github.com/blugnu/time package to provide a mockable time source
+used by the rate limiter and tests.  This allows for deterministic testing of rate
+limiting behaviour without relying on the passage of real time.
+
+The api handler implements a middleware to apply the rate limiter to incoming requests.
+
+### Use of Channels
+
+The only channels used in the rate limiter implementation are those provided by the
+cancellable context and the tickers used by the rate limiter goroutines to manage
+the rate limiting logic and client cleanup.  No additional channels were required.

@@ -1,7 +1,8 @@
-package api
+package api_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,9 +10,12 @@ import (
 	"strings"
 	"testing"
 
+	"products-api/internal/api"
+	"products-api/internal/api/ratelimiter"
 	"products-api/internal/db"
 	"products-api/internal/models"
 
+	"github.com/blugnu/time"
 	"github.com/gorilla/mux"
 )
 
@@ -143,7 +147,7 @@ func (m *mockDB) DeleteProduct(id int) error {
 
 func TestHealthCheck(t *testing.T) {
 	mockDB := newMockDB()
-	handler := NewHandler(mockDB)
+	handler := api.NewHandler(mockDB, nil)
 
 	req := httptest.NewRequest("GET", "/health", nil)
 	rr := httptest.NewRecorder()
@@ -168,7 +172,7 @@ func TestHealthCheck(t *testing.T) {
 
 func TestGetProducts(t *testing.T) {
 	mockDB := newMockDB()
-	handler := NewHandler(mockDB)
+	handler := api.NewHandler(mockDB, nil)
 
 	// Add some test products
 	testProducts := []models.CreateProductRequest{
@@ -321,7 +325,7 @@ func TestGetProducts(t *testing.T) {
 func TestGetProductsError(t *testing.T) {
 	mockDB := newMockDB()
 	mockDB.shouldFail = true
-	handler := NewHandler(mockDB)
+	handler := api.NewHandler(mockDB, nil)
 
 	req := httptest.NewRequest("GET", "/api/v1/products", nil)
 	rr := httptest.NewRecorder()
@@ -345,7 +349,7 @@ func TestGetProductsError(t *testing.T) {
 
 func TestGetProduct(t *testing.T) {
 	mockDB := newMockDB()
-	handler := NewHandler(mockDB)
+	handler := api.NewHandler(mockDB, nil)
 
 	// Add a test product
 	req := models.CreateProductRequest{
@@ -425,7 +429,7 @@ func TestGetProduct(t *testing.T) {
 
 func TestCreateProduct(t *testing.T) {
 	mockDB := newMockDB()
-	handler := NewHandler(mockDB)
+	handler := api.NewHandler(mockDB, nil)
 
 	tests := []struct {
 		name           string
@@ -515,7 +519,7 @@ func TestCreateProduct(t *testing.T) {
 func TestCreateProductDatabaseError(t *testing.T) {
 	mockDB := newMockDB()
 	mockDB.shouldFail = true
-	handler := NewHandler(mockDB)
+	handler := api.NewHandler(mockDB, nil)
 
 	requestBody := models.CreateProductRequest{
 		Name:        "Test Product",
@@ -539,7 +543,7 @@ func TestCreateProductDatabaseError(t *testing.T) {
 
 func TestUpdateProduct(t *testing.T) {
 	mockDB := newMockDB()
-	handler := NewHandler(mockDB)
+	handler := api.NewHandler(mockDB, nil)
 
 	// Create a product to update
 	createReq := models.CreateProductRequest{
@@ -664,7 +668,7 @@ func TestUpdateProduct(t *testing.T) {
 
 func TestDeleteProduct(t *testing.T) {
 	mockDB := newMockDB()
-	handler := NewHandler(mockDB)
+	handler := api.NewHandler(mockDB, nil)
 
 	// Create a product to delete
 	createReq := models.CreateProductRequest{
@@ -734,7 +738,7 @@ func TestDeleteProduct(t *testing.T) {
 
 func TestSetupRoutes(t *testing.T) {
 	realDB := db.NewInMemoryDB()
-	handler := NewHandler(realDB)
+	handler := api.NewHandler(realDB, nil)
 	router := handler.SetupRoutes()
 
 	// Test that routes are properly configured
@@ -767,7 +771,7 @@ func TestSetupRoutes(t *testing.T) {
 
 func TestCORSMiddleware(t *testing.T) {
 	mockDB := newMockDB()
-	handler := NewHandler(mockDB)
+	handler := api.NewHandler(mockDB, nil)
 	router := handler.SetupRoutes()
 
 	// Test OPTIONS request on a valid route
@@ -803,6 +807,81 @@ func TestCORSMiddleware(t *testing.T) {
 	corsOrigin := rr.Header().Get("Access-Control-Allow-Origin")
 	if corsOrigin != "*" {
 		t.Errorf("Expected Access-Control-Allow-Origin header on GET request, got %s", corsOrigin)
+	}
+}
+
+func TestRateLimiterMiddleware(t *testing.T) {
+	// establish a context with a mock clock for testing
+	// this allows us to control time in tests and simulate the passage
+	// of time for rate limiting
+	clock := time.NewMockClock()
+	ctx := context.Background()
+	ctx = time.ContextWithClock(ctx, clock)
+
+	// add cancellation to the context to ensure the rate limiter
+	// can be stopped after tests
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// setup rate limiter with a limit of 5 requests per second
+	// and a client timeout of 1 minute
+	cfg := ratelimiter.Config{
+		Limit:         5,
+		LimitInterval: time.Second,
+		ClientTimeout: time.Minute,
+	}
+
+	rateLimiter, err := ratelimiter.New(ctx, cfg)
+	if err != nil {
+		t.Fatalf("Failed to create rate limiter: %v", err)
+	}
+
+	mockDB := newMockDB()
+	handler := api.NewHandler(mockDB, rateLimiter)
+	router := handler.SetupRoutes()
+
+	// 6 requests will trigger rate limiting
+	for i := 1; i <= 6; i++ {
+		req := httptest.NewRequest("GET", "/api/v1/products", nil)
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, req)
+
+		switch i {
+		case 1, 2, 3, 4, 5:
+			if rr.Code != http.StatusOK {
+				t.Errorf("Expected status OK for request %d, got %d", i, rr.Code)
+			}
+		case 6:
+			if rr.Code != http.StatusTooManyRequests {
+				t.Errorf("Expected status Too Many Requests for request %d, got %d", i, rr.Code)
+			}
+		}
+	}
+
+	// simulate the passing of a limit interval
+	clock.AdvanceBy(cfg.LimitInterval)
+
+	// a further request should now succeed
+	req := httptest.NewRequest("GET", "/api/v1/products", nil)
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("Expected status OK after reset, got %d", rr.Code)
+	}
+
+	// simulate the passing of 2 client timeout intervals
+	//
+	// the client would not timeout in the first interval since it
+	// made requests in that time, so the second interval is required,
+	// with no client activity, to trigger cleanup
+	clock.AdvanceBy(2 * cfg.ClientTimeout)
+
+	// the rate limiter should have cleaned up old clients
+	if rateLimiter.NumberOfClients() != 0 {
+		t.Errorf("Expected no clients after client timeout, got %d", rateLimiter.NumberOfClients())
 	}
 }
 

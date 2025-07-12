@@ -10,7 +10,7 @@ A RESTful API for managing products built with Go, featuring CRUD operations and
 - **Validation**: Request validation using go-playground/validator
 - **CORS Support**: Cross-origin resource sharing enabled
 - **Health Check**: Health check endpoint for monitoring
-- **Middleware**: Logging and CORS middleware
+- **Middleware**: Logging, CORS and Rate Limiter middleware
 
 ## API Endpoints
 
@@ -54,6 +54,7 @@ A RESTful API for managing products built with Go, featuring CRUD operations and
 
 1. Clone the repository
 2. Install dependencies:
+
    ```bash
    go mod download
    ```
@@ -70,6 +71,16 @@ The server will start on port 8080 by default. You can set a custom port using t
 PORT=3000 go run main.go
 ```
 
+### Rate Limiting
+
+The API includes a rate limiter. By default, this applies a limit of 100 requests per
+second per client IP address.  This can can be configured using the `RATE_LIMIT`
+environment variable:
+
+```bash
+RATE_LIMIT=10 go run main.go
+```
+
 ### Building
 
 ```bash
@@ -77,19 +88,34 @@ go build -o products-api
 ./products-api
 ```
 
+### Demo
+
+A demo script is provided to demonstrate the API functionality. After starting the server, you can run the demo script with:
+
+```bash
+./demo.sh
+```
+
+To observe rate limiting, start the server with `RATE_LIMIT` set to a lower level and
+run the demo script multiple times.  If the rate limit is set to 8 or lower, the rate limiter
+will be triggered for the later requests made in a single execution of the demo script.
+
 ## Example Usage
 
 ### Get all products (paginated)
+
 ```bash
 curl "http://localhost:8080/api/v1/products?page=1&page_size=5"
 ```
 
 ### Get a specific product
+
 ```bash
 curl "http://localhost:8080/api/v1/products/1"
 ```
 
 ### Create a new product
+
 ```bash
 curl -X POST "http://localhost:8080/api/v1/products" \
   -H "Content-Type: application/json" \
@@ -103,6 +129,7 @@ curl -X POST "http://localhost:8080/api/v1/products" \
 ```
 
 ### Update a product
+
 ```bash
 curl -X PUT "http://localhost:8080/api/v1/products/1" \
   -H "Content-Type: application/json" \
@@ -113,18 +140,20 @@ curl -X PUT "http://localhost:8080/api/v1/products/1" \
 ```
 
 ### Delete a product
+
 ```bash
 curl -X DELETE "http://localhost:8080/api/v1/products/1"
 ```
 
 ### Health check
+
 ```bash
 curl "http://localhost:8080/health"
 ```
 
 ## Project Structure
 
-```
+```text
 .
 ├── main.go                 # Application entry point
 ├── go.mod                  # Go module definition
