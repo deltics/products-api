@@ -71,7 +71,7 @@ func NewInMemoryDB() *InMemoryDB {
 	}
 
 	for _, req := range sampleProducts {
-		db.CreateProduct(req)
+		_, _ = db.CreateProduct(req)
 	}
 
 	return db
