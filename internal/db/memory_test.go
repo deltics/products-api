@@ -232,7 +232,9 @@ func TestUpdateProduct(t *testing.T) {
 
 	// Test partial update
 	partialUpdate := models.UpdateProductRequest{
-		InStock: boolPtr(false),
+		InStock:     boolPtr(false),
+		Description: stringPtr("Updated description for Laptop"),
+		Category:    stringPtr("Updated Category"),
 	}
 
 	product, err = db.UpdateProduct(1, partialUpdate)
@@ -242,6 +244,14 @@ func TestUpdateProduct(t *testing.T) {
 
 	if product.InStock != false {
 		t.Error("InStock should be updated to false")
+	}
+
+	if product.Description != "Updated description for Laptop" {
+		t.Error("Description should be updated to 'Updated description for Laptop'")
+	}
+
+	if product.Category != "Updated Category" {
+		t.Error("Category should be updated to 'Updated Category'")
 	}
 
 	if product.Name != "Updated Laptop" {
