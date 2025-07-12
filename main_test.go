@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -60,13 +61,17 @@ func TestEnvironmentVariables(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Save original value
 			originalPort := os.Getenv("PORT")
-			defer os.Setenv("PORT", originalPort)
+			defer func() { _ = os.Setenv("PORT", originalPort) }()
 
 			// Set test value
+			var err error
 			if tt.envValue == "" {
-				os.Unsetenv("PORT")
+				err = os.Unsetenv("PORT")
 			} else {
-				os.Setenv("PORT", tt.envValue)
+				err = os.Setenv("PORT", tt.envValue)
+			}
+			if err != nil {
+				t.Fatalf("Failed to set PORT environment variable: %v", err)
 			}
 
 			// Test the logic from main function
@@ -97,7 +102,7 @@ func TestServerCanStart(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to make request to test server: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status code %d, got %d", http.StatusOK, resp.StatusCode)
@@ -125,7 +130,10 @@ func TestConcurrentRequests(t *testing.T) {
 				errors <- err
 				return
 			}
-			resp.Body.Close()
+			if err := resp.Body.Close(); err != nil {
+				errors <- fmt.Errorf("error closing response body: %w", err)
+				return
+			}
 
 			if resp.StatusCode != http.StatusOK {
 				errors <- err
