@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"products-api/internal/db"
 	"products-api/internal/models"
@@ -76,8 +77,14 @@ func (h *Handler) GetProducts(w http.ResponseWriter, r *http.Request) {
 		pageSize = 10
 	}
 
+	filters, err := h.productFiltersFromQuery(r)
+	if err != nil {
+		h.writeErrorResponse(w, http.StatusBadRequest, "Invalid query string", err.Error())
+		return
+	}
+
 	// Get products from database
-	products, total, err := h.db.GetProducts(page, pageSize)
+	products, total, err := h.db.GetProducts(page, pageSize, filters...)
 	if err != nil {
 		h.writeErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve products", err.Error())
 		return
@@ -250,4 +257,71 @@ func (h *Handler) corsMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (h *Handler) productFiltersFromQuery(r *http.Request) ([]db.ProductFilter, error) {
+	var (
+		filters []db.ProductFilter
+		errs    []error
+	)
+
+	// in stock
+	if r.URL.Query().Has("in_stock") {
+		inStock := r.URL.Query().Get("in_stock")
+		switch strings.ToLower(inStock) {
+		case "false":
+			filters = append(filters, func(product *models.Product) bool {
+				return !product.InStock
+			})
+
+		case "true":
+			filters = append(filters, func(product *models.Product) bool {
+				return product.InStock
+			})
+
+		default:
+			errs = append(errs, fmt.Errorf("invalid in_stock value: %s", inStock))
+		}
+	}
+
+	// in a specified category
+	if category := r.URL.Query().Get("category"); category != "" {
+		filters = append(filters, func(product *models.Product) bool {
+			return strings.EqualFold(product.Category, category)
+		})
+	}
+
+	// name contains a substring
+	if name := r.URL.Query().Get("name"); name != "" {
+		name = strings.ToLower(name)
+		filters = append(filters, func(product *models.Product) bool {
+			return strings.Contains(strings.ToLower(product.Name), name)
+		})
+	}
+
+	// >= minimum price
+	if priceMinStr := r.URL.Query().Get("price_min"); priceMinStr != "" {
+		priceMin, err := strconv.ParseFloat(priceMinStr, 64)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("invalid price_min: %w", err))
+		} else {
+			filters = append(filters, func(product *models.Product) bool {
+				return product.Price >= priceMin
+			})
+		}
+	}
+
+	// <= maximum price
+	if priceMaxStr := r.URL.Query().Get("price_max"); priceMaxStr != "" {
+		priceMax, err := strconv.ParseFloat(priceMaxStr, 64)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("invalid price_max: %w", err))
+		} else {
+			filters = append(filters, func(product *models.Product) bool {
+				return product.Price <= priceMax
+			})
+		}
+	}
+
+	return filters, errors.Join(errs...)
 }

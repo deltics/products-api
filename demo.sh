@@ -3,7 +3,7 @@
 # Products API Demo Script
 # This script demonstrates the various API endpoints
 
-API_BASE="http://localhost:8081"
+API_BASE="http://localhost:8080"
 
 echo "🚀 Products API Demo"
 echo "==================="
@@ -23,15 +23,22 @@ curl -s "$API_BASE/api/v1/products?page=1&page_size=3" | jq '.' 2>/dev/null || c
 echo
 echo
 
+# Get filtered products
+echo "3. Get Products in Category (Office Supplies):"
+echo "GET /api/v1/products?category=office%20supplies"
+curl -s "$API_BASE/api/v1/products?category=office%20supplies" | jq '.' 2>/dev/null || curl -s "$API_BASE/api/v1/products?category=office%20supplies"
+echo
+echo
+
 # Get specific product
-echo "3. Get Product by ID (ID: 1):"
+echo "4. Get Product by ID (ID: 1):"
 echo "GET /api/v1/products/1"
 curl -s "$API_BASE/api/v1/products/1" | jq '.' 2>/dev/null || curl -s "$API_BASE/api/v1/products/1"
 echo
 echo
 
 # Create new product
-echo "4. Create New Product:"
+echo "5. Create New Product:"
 echo "POST /api/v1/products"
 echo "Body: {\"name\": \"Demo Product\", \"description\": \"Created via demo\", \"price\": 99.99, \"category\": \"Demo\", \"in_stock\": true}"
 NEW_PRODUCT=$(curl -s -X POST "$API_BASE/api/v1/products" \
@@ -45,7 +52,7 @@ echo
 echo
 
 # Update product
-echo "5. Update Product (ID: $NEW_ID):"
+echo "6. Update Product (ID: $NEW_ID):"
 echo "PUT /api/v1/products/$NEW_ID"
 echo "Body: {\"name\": \"Updated Demo Product\", \"price\": 149.99}"
 curl -s -X PUT "$API_BASE/api/v1/products/$NEW_ID" \
@@ -58,14 +65,14 @@ echo
 echo
 
 # Get updated product
-echo "6. Verify Update - Get Product by ID ($NEW_ID):"
+echo "7. Verify Update - Get Product by ID ($NEW_ID):"
 echo "GET /api/v1/products/$NEW_ID"
 curl -s "$API_BASE/api/v1/products/$NEW_ID" | jq '.' 2>/dev/null || curl -s "$API_BASE/api/v1/products/$NEW_ID"
 echo
 echo
 
 # Delete product
-echo "7. Delete Product (ID: $NEW_ID):"
+echo "8. Delete Product (ID: $NEW_ID):"
 echo "DELETE /api/v1/products/$NEW_ID"
 HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "$API_BASE/api/v1/products/$NEW_ID")
 echo "HTTP Status: $HTTP_STATUS"
@@ -73,7 +80,7 @@ echo
 echo
 
 # Verify deletion
-echo "8. Verify Deletion - Try to Get Deleted Product:"
+echo "9. Verify Deletion - Try to Get Deleted Product:"
 echo "GET /api/v1/products/$NEW_ID"
 curl -s "$API_BASE/api/v1/products/$NEW_ID" | jq '.' 2>/dev/null || curl -s "$API_BASE/api/v1/products/$NEW_ID"
 echo

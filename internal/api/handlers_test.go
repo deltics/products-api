@@ -172,9 +172,9 @@ func TestGetProducts(t *testing.T) {
 
 	// Add some test products
 	testProducts := []models.CreateProductRequest{
-		{Name: "Product 1", Price: 10.0, Category: "Test", InStock: true},
-		{Name: "Product 2", Price: 20.0, Category: "Test", InStock: false},
-		{Name: "Product 3", Price: 30.0, Category: "Test", InStock: true},
+		{Name: "Accessory 1", Price: 10.0, Category: "Accessory", InStock: true},
+		{Name: "Product 1", Price: 20.0, Category: "Product", InStock: false},
+		{Name: "Product 2", Price: 30.0, Category: "Product", InStock: true},
 	}
 
 	for _, product := range testProducts {
@@ -216,6 +216,76 @@ func TestGetProducts(t *testing.T) {
 			queryParams:    "?page=10&page_size=10",
 			expectedStatus: http.StatusOK,
 			expectedTotal:  3,
+			expectedSize:   0,
+		},
+		{
+			name:           "Filter by in_stock",
+			queryParams:    "?in_stock=true",
+			expectedStatus: http.StatusOK,
+			expectedTotal:  2,
+			expectedSize:   2,
+		},
+		{
+			name:           "Filter by not in_stock",
+			queryParams:    "?in_stock=false",
+			expectedStatus: http.StatusOK,
+			expectedTotal:  1,
+			expectedSize:   1,
+		},
+		{
+			name:           "Filter by category",
+			queryParams:    "?category=Accessory",
+			expectedStatus: http.StatusOK,
+			expectedTotal:  1,
+			expectedSize:   1,
+		},
+		{
+			name:           "Filter by name substring",
+			queryParams:    "?name=Product",
+			expectedStatus: http.StatusOK,
+			expectedTotal:  2,
+			expectedSize:   2,
+		},
+		{
+			name:           "Filter by price_min",
+			queryParams:    "?price_min=15",
+			expectedStatus: http.StatusOK,
+			expectedTotal:  2,
+			expectedSize:   2,
+		},
+		{
+			name:           "Filter by price_max",
+			queryParams:    "?price_max=5",
+			expectedStatus: http.StatusOK,
+			expectedTotal:  0,
+			expectedSize:   0,
+		},
+		{
+			name:           "Filter by name and in_stock",
+			queryParams:    "?name=Product&in_stock=true",
+			expectedStatus: http.StatusOK,
+			expectedTotal:  1,
+			expectedSize:   1,
+		},
+		{
+			name:           "Invalid in_stock value",
+			queryParams:    "?in_stock=maybe",
+			expectedStatus: http.StatusBadRequest,
+			expectedTotal:  0,
+			expectedSize:   0,
+		},
+		{
+			name:           "Invalid price_min",
+			queryParams:    "?price_min=invalid",
+			expectedStatus: http.StatusBadRequest,
+			expectedTotal:  0,
+			expectedSize:   0,
+		},
+		{
+			name:           "Invalid price_max",
+			queryParams:    "?price_max=invalid",
+			expectedStatus: http.StatusBadRequest,
+			expectedTotal:  0,
 			expectedSize:   0,
 		},
 	}
