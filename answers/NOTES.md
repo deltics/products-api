@@ -2,6 +2,20 @@
 
 ## General
 
+### Time Spent
+
+Approximately 8 hours were spent on the implementation over several sessions of 1-2 hours.
+The CODE-REVIEW and DESIGN submissions were composed in a further 1-2 hour session.
+
+### Use of Copilot
+
+I used Github Copilot to generate an initial implementation for the API handlers and
+database layer.  The generated code was a good starting point, but required significant
+modifications to improve error handling and test coverage.
+
+The graceful shutdown and RateLimiter implementation were implemented without Copilot
+assistance (other than code completion suggestions).
+
 ### Linting
 
 Code was linted using `golangci-lint` (v2) with default configuration.  All lint issues were
